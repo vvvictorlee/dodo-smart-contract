@@ -120,4 +120,23 @@ library DODOMath {
         // V0 is greater than or equal to V1 according to the solution
         return DecimalMath.mul(V1, DecimalMath.ONE.add(premium));
     }
+
+ function _SolveQuadraticFunctionForTarget1(
+        uint256 V1,
+        uint256 k,
+        uint256 fairAmount
+    ) internal pure returns (uint256 V0,uint256[] memory steps) {
+steps = new  uint256[](15) ;
+        // V0 = V1+V1*(sqrt-1)/2k
+        uint256 sqrt1 = DecimalMath.divCeil(DecimalMath.mul(k, fairAmount).mul(4), V1);
+        uint256 sqrt = sqrt1.add(DecimalMath.ONE).mul(DecimalMath.ONE).sqrt();
+        uint256 premium = DecimalMath.divCeil(sqrt.sub(DecimalMath.ONE), k.mul(2));
+        // V0 is greater than or equal to V1 according to the solution
+steps[14]=premium;
+steps[13]=sqrt;
+steps[12]=sqrt1;
+steps[11]=DecimalMath.mul(k, fairAmount).mul(4);
+steps[10]=DecimalMath.mul(k, fairAmount);
+        return (DecimalMath.mul(V1, DecimalMath.ONE.add(premium)),steps);
+    }
 }

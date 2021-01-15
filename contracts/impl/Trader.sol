@@ -16,7 +16,6 @@ import {Storage} from "./Storage.sol";
 import {Pricing} from "./Pricing.sol";
 import {Settlement} from "./Settlement.sol";
 
-
 /**
  * @title Trader
  * @author DODO Breeder
@@ -28,7 +27,12 @@ contract Trader is Storage, Pricing, Settlement {
 
     // ============ Events ============
 
-    event SellBaseToken(address indexed seller, uint256 payBase, uint256 receiveQuote);
+    event SellBaseToken(
+        address indexed seller,
+        uint256 payBase,
+        uint256 receiveQuote,
+        uint256[] step
+    );
 
     event BuyBaseToken(address indexed buyer, uint256 receiveBase, uint256 payQuote);
 
@@ -70,7 +74,8 @@ contract Trader is Storage, Pricing, Settlement {
             uint256 mtFeeQuote,
             Types.RStatus newRStatus,
             uint256 newQuoteTarget,
-            uint256 newBaseTarget
+            uint256 newBaseTarget,
+            uint256[] memory steps
         ) = _querySellBaseToken(amount);
         require(receiveQuote >= minReceiveQuote, "SELL_BASE_RECEIVE_NOT_ENOUGH");
 
@@ -97,7 +102,7 @@ contract Trader is Storage, Pricing, Settlement {
         }
 
         _donateQuoteToken(lpFeeQuote);
-        emit SellBaseToken(msg.sender, amount, receiveQuote);
+        emit SellBaseToken(msg.sender, amount, receiveQuote, steps);
 
         return receiveQuote;
     }
@@ -107,6 +112,23 @@ contract Trader is Storage, Pricing, Settlement {
         uint256 maxPayQuote,
         bytes calldata data
     ) external tradeAllowed buyingAllowed gasPriceLimit preventReentrant returns (uint256) {
+        // uint256 baseBalance = _BASE_BALANCE_;
+
+        // _ORACLE_PRICE_: 0.74,
+        // _LP_FEE_RATE_: 595,
+        // _MT_FEE_RATE_: 105,
+        // _K_: 100,
+        // require(false, append(uintToString(amount),"BuyBaseToken DODO_BASE_BALANCE_NOT_ENOUGH",uintToString(baseBalance),"",""));
+
+        _R_STATUS_ = Types.RStatus.ABOVE_ONE; // uint256(1);
+        _TARGET_BASE_TOKEN_AMOUNT_ = uint256(994984389360) * (10**12);
+        _TARGET_QUOTE_TOKEN_AMOUNT_ = uint256(739567295754) * (10**12);
+        _BASE_BALANCE_ = uint256(699279538448) * (10**12);
+        _QUOTE_BALANCE_ = uint256(958398324877) * (10**12);
+        // baseBalance = _BASE_BALANCE_;
+
+        // require(false, append(uintToString(amount),"BuyBaseToken DODO_BASE_BALANCE_NOT_ENOUGH",uintToString(baseBalance),"",""));
+
         // query price
         (
             uint256 payQuote,
@@ -116,6 +138,7 @@ contract Trader is Storage, Pricing, Settlement {
             uint256 newQuoteTarget,
             uint256 newBaseTarget
         ) = _queryBuyBaseToken(amount);
+
         require(payQuote <= maxPayQuote, "BUY_BASE_COST_TOO_MUCH");
 
         // settle assets
@@ -149,7 +172,7 @@ contract Trader is Storage, Pricing, Settlement {
     // ============ Query Functions ============
 
     function querySellBaseToken(uint256 amount) external view returns (uint256 receiveQuote) {
-        (receiveQuote, , , , , ) = _querySellBaseToken(amount);
+        (receiveQuote, , , , , , ) = _querySellBaseToken(amount);
         return receiveQuote;
     }
 
@@ -167,14 +190,16 @@ contract Trader is Storage, Pricing, Settlement {
             uint256 mtFeeQuote,
             Types.RStatus newRStatus,
             uint256 newQuoteTarget,
-            uint256 newBaseTarget
+            uint256 newBaseTarget,
+            uint256[] memory steps
         )
     {
-        (newBaseTarget, newQuoteTarget) = getExpectedTarget();
+        (newBaseTarget, newQuoteTarget, steps) = getExpectedTarget1();
 
         uint256 sellBaseAmount = amount;
-
+        uint256 step = 0;
         if (_R_STATUS_ == Types.RStatus.ONE) {
+            step = 1;
             // case 1: R=1
             // R falls below one
             receiveQuote = _ROneSellBaseToken(sellBaseAmount, newQuoteTarget);
@@ -185,19 +210,23 @@ contract Trader is Storage, Pricing, Settlement {
             // case 2: R>1
             // complex case, R status depends on trading amount
             if (sellBaseAmount < backToOnePayBase) {
+                step = backToOnePayBase;
                 // case 2.1: R status do not change
                 receiveQuote = _RAboveSellBaseToken(sellBaseAmount, _BASE_BALANCE_, newBaseTarget);
                 newRStatus = Types.RStatus.ABOVE_ONE;
                 if (receiveQuote > backToOneReceiveQuote) {
+                    step = 211;
                     // [Important corner case!] may enter this branch when some precision problem happens. And consequently contribute to negative spare quote amount
                     // to make sure spare quote>=0, mannually set receiveQuote=backToOneReceiveQuote
                     receiveQuote = backToOneReceiveQuote;
                 }
             } else if (sellBaseAmount == backToOnePayBase) {
+                step = 22;
                 // case 2.2: R status changes to ONE
                 receiveQuote = backToOneReceiveQuote;
                 newRStatus = Types.RStatus.ONE;
             } else {
+                step = 23;
                 // case 2.3: R status changes to BELOW_ONE
                 receiveQuote = backToOneReceiveQuote.add(
                     _ROneSellBaseToken(sellBaseAmount.sub(backToOnePayBase), newQuoteTarget)
@@ -205,6 +234,7 @@ contract Trader is Storage, Pricing, Settlement {
                 newRStatus = Types.RStatus.BELOW_ONE;
             }
         } else {
+            step = 3;
             // _R_STATUS_ == Types.RStatus.BELOW_ONE
             // case 3: R<1
             receiveQuote = _RBelowSellBaseToken(sellBaseAmount, _QUOTE_BALANCE_, newQuoteTarget);
@@ -215,8 +245,16 @@ contract Trader is Storage, Pricing, Settlement {
         lpFeeQuote = DecimalMath.mul(receiveQuote, _LP_FEE_RATE_);
         mtFeeQuote = DecimalMath.mul(receiveQuote, _MT_FEE_RATE_);
         receiveQuote = receiveQuote.sub(lpFeeQuote).sub(mtFeeQuote);
-
-        return (receiveQuote, lpFeeQuote, mtFeeQuote, newRStatus, newQuoteTarget, newBaseTarget);
+        steps[4] = step;
+        return (
+            receiveQuote,
+            lpFeeQuote,
+            mtFeeQuote,
+            newRStatus,
+            newQuoteTarget,
+            newBaseTarget,
+            steps
+        );
     }
 
     function _queryBuyBaseToken(uint256 amount)
@@ -231,19 +269,44 @@ contract Trader is Storage, Pricing, Settlement {
             uint256 newBaseTarget
         )
     {
+       
+
+
         (newBaseTarget, newQuoteTarget) = getExpectedTarget();
+
+
 
         // charge fee from user receive amount
         lpFeeBase = DecimalMath.mul(amount, _LP_FEE_RATE_);
         mtFeeBase = DecimalMath.mul(amount, _MT_FEE_RATE_);
         uint256 buyBaseAmount = amount.add(lpFeeBase).add(mtFeeBase);
-
+ 
         if (_R_STATUS_ == Types.RStatus.ONE) {
             // case 1: R=1
+// require(
+//             false,
+//             append(
+//                 uintToString(amount),
+//                 "_queryBuyBaseToken 777 case 2: R>1 DODO_BASE_BALANCE_NOT_ENOUGH",
+//                 uintToString(_BASE_BALANCE_),
+//                 "",
+//                 ""
+//             )
+//         );
             payQuote = _ROneBuyBaseToken(buyBaseAmount, newBaseTarget);
             newRStatus = Types.RStatus.ABOVE_ONE;
         } else if (_R_STATUS_ == Types.RStatus.ABOVE_ONE) {
             // case 2: R>1
+// require(
+//             false,
+//             append(
+//                 uintToString(amount),
+//                 "_queryBuyBaseToken 44111556case 2: R>1 DODO_BASE_BALANCE_NOT_ENOUGH",
+//                 uintToString(_BASE_BALANCE_),
+//                 "",
+//                 ""
+//             )
+//         );
             payQuote = _RAboveBuyBaseToken(buyBaseAmount, _BASE_BALANCE_, newBaseTarget);
             newRStatus = Types.RStatus.ABOVE_ONE;
         } else if (_R_STATUS_ == Types.RStatus.BELOW_ONE) {

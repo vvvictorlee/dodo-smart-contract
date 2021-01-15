@@ -85,6 +85,28 @@ contract Storage is InitializableOwnable, ReentrancyGuard {
 
     // ============ Helper Functions ============
 
+function uintToString(uint v) internal  pure returns ( string memory str) {
+        uint maxlength = 100;
+        bytes memory reversed = new bytes(maxlength);
+        uint i = 0;
+        while (v != 0) {
+            uint remainder = v % 10;
+            v = v / 10;
+            reversed[i++] = byte(uint8(48 + remainder));
+        }
+        bytes memory s = new bytes(i + 1);
+        for (uint j = 0; j <= i; j++) {
+            s[j] = reversed[i - j];
+        }
+        str = string(s);
+    }
+
+function append(string  memory a, string memory  b, string memory  c, string memory  d, string memory  e) internal pure returns (string memory ) {
+
+    return string(abi.encodePacked(a, b, c, d, e));
+
+}
+
     function _checkDODOParameters() internal view returns (uint256) {
         require(_K_ < DecimalMath.ONE, "K>=1");
         require(_K_ > 0, "K=0");

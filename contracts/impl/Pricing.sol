@@ -49,7 +49,7 @@ contract Pricing is Storage {
         view
         returns (uint256 payQuoteToken)
     {
-        require(amount < targetBaseTokenAmount, "DODO_BASE_BALANCE_NOT_ENOUGH");
+        require(amount < targetBaseTokenAmount, "_ROneBuyBaseToken DODO_BASE_BALANCE_NOT_ENOUGH");
         uint256 B2 = targetBaseTokenAmount.sub(amount);
         payQuoteToken = _RAboveIntegrate(targetBaseTokenAmount, targetBaseTokenAmount, B2);
         return payQuoteToken;
@@ -107,14 +107,28 @@ contract Pricing is Storage {
 
     // ============ R > 1 cases ============
 
+
     function _RAboveBuyBaseToken(
         uint256 amount,
         uint256 baseBalance,
         uint256 targetBaseAmount
     ) internal view returns (uint256 payQuoteToken) {
-        require(amount < baseBalance, "DODO_BASE_BALANCE_NOT_ENOUGH");
-        uint256 B2 = baseBalance.sub(amount);
+// require(
+//             false,
+//             append(
+//                 uintToString(amount),
+//                 "_RAboveBuyBaseToken false DODO_BASE_BALANCE_NOT_ENOUGH",
+//                 uintToString(_BASE_BALANCE_),
+//                 uintToString(baseBalance),
+//                 ""
+//             )
+//         );
+        // baseBalance = _BASE_BALANCE_;
+        require(amount < baseBalance, append(uintToString(amount),"_RAboveBuyBaseToken DODO_BASE_BALANCE_NOT_ENOUGH",uintToString(baseBalance),"",""));
+       
+         uint256 B2 = baseBalance.sub(amount);
         return _RAboveIntegrate(targetBaseAmount, baseBalance, B2);
+// return 0;
     }
 
     function _RAboveSellBaseToken(
@@ -142,6 +156,25 @@ contract Pricing is Storage {
         return newTargetBase.sub(_BASE_BALANCE_);
     }
 
+    function _RAboveBackToOne1() internal view returns (uint256 payBaseToken,uint256[] memory steps) {
+        // important: carefully design the system to make sure spareBase always greater than or equal to 0
+steps = new  uint256[](15) ;
+        uint256 spareQuote = _QUOTE_BALANCE_.sub(_TARGET_QUOTE_TOKEN_AMOUNT_);
+        uint256 price = getOraclePrice();
+        uint256 fairAmount = DecimalMath.divFloor(spareQuote, price);
+        (uint256 newTargetBase,uint256[] memory steps1) = DODOMath._SolveQuadraticFunctionForTarget1(
+            _BASE_BALANCE_,
+            _K_,
+            fairAmount
+        );
+steps = steps1;
+         steps[9]=spareQuote;
+steps[8]=price;
+steps[7]=fairAmount;
+steps[6]=newTargetBase;
+        return (newTargetBase.sub(_BASE_BALANCE_),steps);
+    }
+
     // ============ Helper functions ============
 
     function getExpectedTarget() public view returns (uint256 baseTarget, uint256 quoteTarget) {
@@ -155,6 +188,23 @@ contract Pricing is Storage {
         } else if (_R_STATUS_ == Types.RStatus.ABOVE_ONE) {
             uint256 payBaseToken = _RAboveBackToOne();
             return (B.add(payBaseToken), _TARGET_QUOTE_TOKEN_AMOUNT_);
+        }
+    }
+
+    function getExpectedTarget1() public view returns (uint256 baseTarget, uint256 quoteTarget,uint256[] memory steps) {
+        uint256 Q = _QUOTE_BALANCE_;
+        uint256 B = _BASE_BALANCE_;
+       steps = new  uint256[](15) ;
+        if (_R_STATUS_ == Types.RStatus.ONE) {
+            return (_TARGET_BASE_TOKEN_AMOUNT_, _TARGET_QUOTE_TOKEN_AMOUNT_,steps);
+        } else if (_R_STATUS_ == Types.RStatus.BELOW_ONE) {
+            uint256 payQuoteToken = _RBelowBackToOne();
+            return (_TARGET_BASE_TOKEN_AMOUNT_, Q.add(payQuoteToken),steps);
+        } else if (_R_STATUS_ == Types.RStatus.ABOVE_ONE) {
+            (uint256 payBaseToken,uint256[] memory steps1) = _RAboveBackToOne1();
+steps = steps1;
+steps[0]=3;steps[1]=payBaseToken;
+            return (B.add(payBaseToken), _TARGET_QUOTE_TOKEN_AMOUNT_,steps);
         }
     }
 

@@ -13,15 +13,17 @@
   "scripts": {
     "prettier": "prettier --write **/*.sol",
     "migrate": "truffle migrate",
-    "compile": "rm -r build && truffle compile",
+    "rcompile": "rm -r build && truffle compile",
+"compile": " truffle compile",
     "coverage": "NETWORK_ID=1002 RPC_NODE_URI=http://127.0.0.1:6545 COVERAGE=true truffle run coverage",
     "test": "truffle compile && truffle test",
-    "test_only": "truffle test",
+    "s": "truffle test /Users/lisheng/Downloads/defi/dodo-smart-contract-master/test/StableCoinMode.test.ts",
+    "test_only": "truffle test /Users/lisheng/Downloads/defi/dodo-smart-contract-master/test/USD2GBPStableCoinMode.test.ts",
     "deploy": "truffle migrate --network=$NETWORK --reset",
     "deploy_kovan": "NETWORK=kovan npm run deploy",
     "deploy_mainnet": "NETWORK=mainnet npm run deploy",
     "deploy_test": "NETWORK=development npm run deploy",
-    "node": "ganache-cli --port 8545 -l 0x1fffffffffffff -i 5777 -g 1 --allowUnlimitedContractSize"
+    "node1": "ganache-cli --port 8545 -l 0x1fffffffffffff -i 5777 -g 1 --allowUnlimitedContractSize"
   },
   "dependencies": {
     "@types/chai": "^4.2.11",
@@ -37,6 +39,8 @@
     "debug": "^4.1.1",
     "dotenv-flow": "^3.1.0",
     "es6-promisify": "^6.1.1",
+    "eth-log-parser": "^0.1.0",
+    "ethereum-event-logs": "^1.3.1",
     "ethereumjs-util": "^7.0.2",
     "lodash": "^4.17.20",
     "mocha": "^7.2.0",

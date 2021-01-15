@@ -146,6 +146,7 @@ describe("DODO ETH PROXY", () => {
 
   describe("withdraw eth directly", () => {
     it("withdraw", async () => {
+
       const withdrawAmount = decimalStr("5");
       const baseLpTokenAddress = await ctx.DODO.methods
         ._BASE_CAPITAL_TOKEN_()

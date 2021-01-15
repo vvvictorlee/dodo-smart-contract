@@ -34,9 +34,9 @@ describe("Trader", () => {
 
   before(async () => {
     let dodoContextInitConfig = {
-      lpFeeRate: decimalStr("0.0001"),
-      mtFeeRate: decimalStr("0"),
-      k: gweiStr("1"), // nearly zero
+      lpFeeRate: decimalStr("0.000595"),
+      mtFeeRate: decimalStr("0.000105"),
+      k: decimalStr("0.0001"), // nearly zero
       gasPriceLimit: gweiStr("100"),
     }
     ctx = await getDODOContext(dodoContextInitConfig)
@@ -90,7 +90,7 @@ describe("Trader", () => {
       await ctx.mintTestToken(trader, decimalStr("0"), decimalStr("10000"))
       await ctx.DODO.methods.buyBaseToken(decimalStr("9999"), decimalStr("20000"), "0x").send(ctx.sendParam(trader))
       assert.equal(await ctx.BASE.methods.balanceOf(trader).call(), decimalStr("19999"))
-      assert.equal(await ctx.QUOTE.methods.balanceOf(trader).call(), "9000000119999999900000")
+      assert.equal(await ctx.QUOTE.methods.balanceOf(trader).call(), "9000 000119 999999 900000")
     })
 
     it("tiny withdraw penalty", async () => {
